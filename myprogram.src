@@ -1,0 +1,62 @@
+// Dependency order
+#include Framework/Logger.src
+#include Framework/CommandParam.src
+#include Framework/Command.src
+#include Framework/CommandInstruction.src
+#include Framework/CommandInstructionParser.src
+#include Framework/CommandRegistry.src
+#include Framework/Constants.src
+#include Framework/Utilities.src
+#include Framework/Ip.src
+
+// Commands
+#include Commands/Clear.src
+#include Commands/Commands.src
+#include Commands/Echo.src
+#include Commands/Exit.src
+#include Commands/Grep.src
+#include Commands/Help.src
+#include Commands/Nmap.src
+#include Commands/Secret.src
+#include Commands/Whatsmyip.src
+#include Commands/Whoami.src
+#include Commands/Whois.src
+
+log_level = "error"
+if params.indexOf("-v") != null or params.indexOf("--verbose") != null then
+    log_level = "debug"
+end if
+
+logger = Logger.New(log_level)
+app_state = {
+    "should_exit": false,
+    "access_code": "", // Populated when a user attempts to access a proceted command
+}
+registry = CommandRegistry.New(app_state, logger)
+
+// Commands
+registry.register(Clear.New())
+registry.register(Commands.New())
+registry.register(Echo.New())
+registry.register(Exit.New())
+registry.register(Grep.New())
+registry.register(Help.New())
+registry.register(Nmap.New())
+registry.register(Secret.New())
+registry.register(Whatsmyip.New())
+registry.register(Whoami.New())
+registry.register(Whois.New())
+
+// Some configurable logic to render # (root) or $ (any other user)
+username = active_user()
+symbol = "$"
+if username == "root" then symbol = "#"
+
+// Iterate over user input
+while not registry.m_app_state.should_exit
+    id_str = ""
+    input_str = trim(user_input(id_str + symbol + " "))
+    if input_str == "" then continue
+
+    registry.handle(input_str)
+end while

@@ -1,0 +1,18 @@
+CommandParam = {}
+CommandParam.description = "None provided"
+CommandParam.flags = []
+CommandParam.type = "null" // "null" | "bool" | "number" | "string" | "net_address"
+CommandParam.optional = false
+CommandParam.default = null
+CommandParam.position = null
+
+CommandParam.New = function(obj)
+    command_param = new CommandParam
+    if obj.hasIndex("description") then command_param.description = obj.description
+    if obj.hasIndex("flags") then command_param.flags = obj.flags
+    if obj.hasIndex("type") then command_param.type = obj.type
+    if obj.hasIndex("optional") then command_param.optional = obj.optional
+    if obj.hasIndex("default") then command_param.default = obj.default
+    if obj.hasIndex("position") then command_param.position = obj.position
+    return command_param
+end function

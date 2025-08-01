@@ -1,0 +1,108 @@
+Utilities = {}
+Utilities.println = function(text)
+    print(str(text))
+end function
+Utilities.has_index = function(obj, idx)
+    if not obj isa map and not obj isa list then return false
+    return hasIndex(obj, idx) or (hasIndex(obj, "__isa") and hasIndex(obj["__isa"], idx))
+end function
+Utilities.better_date = function(date_str)
+    date_parts = date_str.split("/")
+    day_part = date_parts[0]
+    month_part = date_parts[1]
+    year_part = date_parts[2]
+    months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+    month_num = val(month_part)
+    if month_num != null and month_num <= 12 then
+        month_part = months[month_num - 1]
+    end if
+    return year_part + "/" + month_part + "/" + day_part
+end function
+Utilities.random_string = function(length = 4)
+    str_arr = []
+    ranges = [
+        [48, 57],
+        [65, 90],
+        [97, 122],
+    ]
+    for _ in range(1, length)
+        range_idx = floor(rnd * ((ranges.len() - 1) - 0 + 1) + 0)
+        max = ranges[range_idx][1]
+        min = ranges[range_idx][0]
+        str_arr.push( char(floor(rnd * (max - min + 1) + min)) )
+    end for
+    return str_arr.join("")
+end function
+Utilities.pretty_print = function(input)
+    funcRef.signature = function()
+        return str(@self)
+    end function
+
+    to_pretty_str = function(input, tab = 0)
+        if tab > Constants.PRETTY_PRINT_DEPTH_LIMIT then return "DEPTH LIMIT REACHED"
+        type = typeof(@input)
+        pretty = "unknown(" + type + ")"
+
+        ws = ""
+        for _ in range(0, tab)
+            ws = ws + "  "
+        end for
+        wsless = ""
+        if ws.len() >= 2 then
+            wsless = ws[2:]
+        end if
+
+        if type == "function" then
+            pretty = str(@input)
+
+        else if input isa map or input isa list then
+            pretty = ""
+            indices = []
+            if type == "list" then
+                indices = input.indexes()
+            else
+                for kv in input
+                    indices.push(kv.key)
+                end for
+            end if
+            extra = ""
+            max_idx = Constants.PRETTY_PRINT_IDX_LIMIT
+            if indices.len() > max_idx then
+                indices = indices[:max_idx]
+            end if
+            for key in indices
+                value = null
+                pretty = pretty + ws + key + ": " + typeof(input[key]) + " = "
+                pretty = pretty + to_pretty_str(@(input[key]), tab + 1)
+            end for
+            if input.indexes().len() > max_idx then
+                additional = input.indexes().len() - max_idx
+                pretty = pretty + ws + "[plus " + additional + " more] " + Constants.EOL
+            end if
+            return "{" + Constants.EOL + pretty + wsless + "}" + Constants.EOL
+
+        else if type == "string" then
+            pretty = Constants.QUOTE + input + Constants.QUOTE
+
+        else if type == "number" then
+            pretty = input
+
+        else if type == "null" then
+            pretty = "null"
+        end if
+        
+        return pretty + Constants.EOL
+    end function
+    Utilities.println(to_pretty_str(input))
+end function
+Utilities.print_unknown_command = function(alias)
+    msg = "Unknown command '" + alias + "'" + Constants.EOL
+    msg = msg + "Consider running `commands` to see a list of available commands."
+    Utilities.println(msg)
+end function
+Utilities.empty_list = function(in_list)
+    if typeof(in_list) != "list" then return
+    while len(in_list)
+        in_list.pop()
+    end while
+end function

@@ -1,0 +1,16 @@
+Exit = {}
+Exit.New = function()
+    __exit_func = function(app, params)
+        app.logger.add_debug("__exit_func")
+        app.logger.add_debug("with params: " + str(params))
+        app.state.should_exit = true
+        return true
+    end function
+
+    return Command.New({
+        "alias": "exit",
+        "func_ptr": @__exit_func,
+        "description": "Exits the current process.",
+        "inject": [ "logger", "state" ],
+    })
+end function

@@ -1,0 +1,320 @@
+CommandRegistry = {}
+CommandRegistry.m_app_state = {}
+CommandRegistry.m_command_map = {}
+CommandRegistry.m_logger = null
+CommandRegistry.register = function(command)
+    self.m_logger.add_debug("CommandRegistry.register")
+    alias = command.alias
+    self.m_logger.add_debug("Register command with alias '" + alias + "'")
+    self.m_logger.add_debug("function ptr being used is: " + str(@command.func_ptr))
+
+    // Prevent issues!
+    if alias == "" or @command.func_ptr == null then
+        self.m_logger.add_warning("Cannot register command without alias and func_ptr")
+        return false
+    end if
+
+    // Check if the desired command alias is taken
+    self.m_logger.add_debug("Checking if the desired command alias is taken")
+    if self.m_command_map.hasIndex(alias) then
+        // It's taken! Log error and continue running
+        // Continue running as I don't believe this cause runtime crash
+        msg = "Cannot register command with alias of '" + alias + "' as it's already used."
+        self.m_logger.add_warning(msg)
+        return false
+    end if
+
+    self.m_logger.add_debug("Adding command to map.")
+    self.m_command_map[alias] = command
+    self.m_logger.add_debug("Registered alias '" + alias + "'")
+    return true
+end function
+CommandRegistry.get_command_param_value_by_name = function(command, args, name)
+    self.m_logger.add_debug("CommandRegistry.get_command_param_value_by_name")
+    if not Utilities.has_index(command.params, name) then
+        self.m_logger.add_error("Unable to find param by name '" + name + "'")
+        return null
+    end if
+    param_def = command.params[name]
+    value_to_convert = null
+
+    input_params_map = {}
+    in_args = []
+    for arg in args
+        in_args.push(arg)
+    end for
+
+    // Pull the flags and their values out
+    // If you're reading this, I wish you weren't (:
+    if in_args.len() then
+        for _ in range(0, in_args.len() - 1)
+            arg = in_args.pull()
+            // If this is a flag
+            if arg[0] == "-" then
+                for param_kv in command.params
+                    if param_kv.value.flags.indexOf(arg) == null then continue
+                    new_val = true
+                    // If this flag is supposed to have a value
+                    if param_kv.value.type != "null" then
+                        if not in_args.len() then
+                            self.m_logger.add_warning("Found a flag with an expected and missing value.")
+                            return null
+                        end if
+                        new_val = in_args.pull()
+                    end if
+                    input_params_map[param_kv.key] = new_val
+                    break
+                end for
+            else
+                in_args.push(arg)
+            end if
+        end for
+    end if
+
+    if in_args.len() then
+        for idx in range(0, in_args.len() - 1)
+            input_params_map[idx] = in_args[idx]
+        end for
+    end if
+
+    if param_def.position == null then
+        if Utilities.has_index(input_params_map, name) then
+            value_to_convert = input_params_map[name]
+        end if
+    else
+        if Utilities.has_index(input_params_map, param_def.position) then
+            value_to_convert = input_params_map[param_def.position]
+        end if
+    end if
+
+    if value_to_convert != null then
+        if param_def.type == "string" then
+            self.m_logger.add_debug("Using value as original string")
+            return value_to_convert
+
+        else if param_def.type == "net_address" then
+            self.m_logger.add_debug("Converting input to ip if not already.")
+            ip = Ip.from(value_to_convert)
+            if not is_valid_ip(ip) then return null
+            return ip
+
+        else if param_def.type == "number" then
+            self.m_logger.add_debug("Casting original value to number")
+            value_to_convert = val(value_to_convert)
+            if typeof(value_to_convert) != "number" then
+                self.m_logger.add_warning("Unable to cast to number, using null")
+                return null
+            end if
+            return value_to_convert
+
+        else if param_def.type == "bool" then
+            self.m_logger.add_debug("Casting original value to bool")
+            allowed_map = {"true": true, "false": false, "1": true, "0": false}
+            if not allowed_map.hasIndex(lower(value_to_convert)) then
+                self.m_logger.add_warning("Non-bool value used can't cast.")
+            end if
+            return allowed_map[value_to_convert]
+
+        // Handling "truthy" args
+        else if param_def.type == "null" then
+            self.m_logger.add_debug("Having a value for truthy arg simply means returning true")
+            return true
+        end if
+    end if
+
+    // If we don't have value_to_convert then we return default
+    return param_def.default
+end function
+CommandRegistry.generate_param_val_map = function(command, args)
+    self.m_logger.add_debug("CommandRegistry.generate_param_val_map")
+
+    // We store a map of params and their values to simplify validation & lookup
+    command_param_value_map = {}
+
+    // We iterate over {Command}.params to avoid any "unknown -x arg"-type errors
+    self.m_logger.add_debug("Iterating over params")
+    for param_kv in command.params
+        self.m_logger.add_debug("Adding param definition & value to map")
+        command_param_value_map[param_kv.key] = {
+            "param_definition": param_kv.value,
+            "param_value": self.get_command_param_value_by_name(command, args, param_kv.key),
+        }
+    end for
+    self.m_logger.add_debug("Returning map")
+    return command_param_value_map
+end function
+CommandRegistry.validate_param_val_map = function(command_param_value_map)
+    self.m_logger.add_debug("CommandRegistry.validate_param_val_map")
+
+    // Here's where we compare the elements inside of the args array against
+    // the definitions specified in {Command}.params
+
+    self.m_logger.add_debug("Iterating over command_param_value_map")
+    for param_value_kv in command_param_value_map
+        self.m_logger.add_debug("Grabbing param_definition")
+        param_def = param_value_kv.value.param_definition
+
+        self.m_logger.add_debug("Grabbing param_value")
+        param_value = param_value_kv.value.param_value
+
+        // Pre-define error message for later use
+        self.m_logger.add_debug("Creating error text in the case we need to use it.")
+        err_msg = "Param '" + param_value_kv.key + "' has invalid value '" + str(param_value) + "'."
+        err_msg = err_msg + " Expected value type '" + param_def.type + "'"
+        err_msg = err_msg + " Got value type '" + typeof(param_value) + "'"
+
+        // If the param is not optional and the value is null, return invalid
+        self.m_logger.add_debug("Checking for and handling non-optional param null value")
+        if not param_def.optional and param_value == null then
+            self.m_logger.add_warning(err_msg)
+            return false
+
+        // If param_def.type is bool and param_value isn't true/false, return invalid
+        self.m_logger.add_debug("Checking for and handling bool param non-bool value")
+        else if param_def.type == "bool" and not [true, false].hasIndex(param_value) then
+            self.m_logger.add_warning(err_msg)
+            return false
+
+        // If param_def.type is number and param_value isn't, return invalid
+        self.m_logger.add_debug("Checking for and handling number param non-number value")
+        else if param_def.type == "number" and typeof(param_value) != "number" then
+            self.m_logger.add_warning(err_msg)
+            return false
+        end if
+    end for
+
+    // We fail early if invalid so getting here means we're valid!
+    return true
+end function
+CommandRegistry.execute = function(instruction)
+    self.m_logger.add_debug("CommandRegistry.execute")
+
+    alias = instruction.command
+    args = instruction.args
+    stdin = instruction.stdin
+
+    self.m_logger.add_debug("Evaluating given alias")
+    if not alias or typeof(alias) != "string" or alias == "" then
+        self.m_logger.add_warning("Cannot execute on a empty/non-string")
+        return false
+    end if
+
+    self.m_logger.add_debug("Checking command map for given alias")
+    if not self.m_command_map.hasIndex(alias) then
+        Utilities.print_unknown_command(alias)
+        return false
+    end if
+
+    self.m_logger.add_debug("Grabbing command from map")
+    command = self.m_command_map[alias]
+
+    self.m_logger.add_debug("Generating param map with given args")
+    param_val_map = self.generate_param_val_map(command, args)
+
+    // Let's validate the args against the defined command params
+    self.m_logger.add_debug("Validating param map")
+    valid = self.validate_param_val_map(param_val_map)
+
+    // Let's build a simplified map of simply key => value to pass to our command function
+    self.m_logger.add_debug("Building a simplified param map to send to command function")
+    params = {}
+    for param_val_map_kv in param_val_map
+        params[param_val_map_kv.key] = param_val_map_kv.value.param_value
+    end for
+
+    // Let's build an app object to pass to our command function
+    self.m_logger.add_debug("Building an app object to pass to our command function")
+    app = {}
+    available_injects = [ "commands", "registry", "logger", "state", "stdin" ]
+    for prop in command.inject
+        if available_injects.indexOf(prop) == null then
+            self.m_logger.add_debug("Unexpected injection type of '" + prop + "'")
+            continue
+
+        else if prop == "commands" then
+            app["commands"] = self.m_command_map
+
+        else if prop == "logger" then
+            app["logger"] = self.m_logger
+
+        else if prop == "state" then
+            app["state"] = self.m_app_state
+
+        else if prop == "registry" then
+            app["registry"] = self
+
+        else if prop == "stdin" then
+            app["stdin"] = stdin
+        end if
+    end for
+
+    if not valid then
+        Utilities.println("Unexpected input. Please see `help` for more information.")
+        return false
+    end if
+
+    // Protected commands required authorization
+    if typeof(command.access_code) == "string" then
+        if self.m_app_state.access_code != command.access_code then self.m_app_state.access_code = ""
+        if self.m_app_state.access_code == "" then
+            Utilities.println("This command requires an access code to use.")
+            self.m_app_state.access_code = trim(user_input("Access code: ", true, false))
+        end if
+    end if
+
+    self.m_logger.add_debug("Input is valid! Run it.")
+    command_result = command.func_ptr(app, params)
+    self.m_logger.add_debug("command.func_ptr returned: '" + str(command_result) + "'")
+    return command_result
+end function
+CommandRegistry.handle = function(input)
+    self.m_logger.add_debug("CommandRegistry.handle")
+    parser = CommandInstructionParser.New(self.m_logger)
+    instructions = parser.generate_instructions_from_input(input)
+    bundle_result = false
+
+    if not instructions.len() then
+        self.m_logger.add_warning("Unable to parse input")
+        Utilities.println("Unable to parse input.")
+        return false
+    end if
+
+    globals["print"] = @print
+    original_print = globals["print"]
+    print_history = []
+    pipe_print = function(value = "", replaceText = 0)
+        print_history.push(value)
+    end function
+    idx = -1
+    for instruction in instructions
+        Utilities.empty_list(print_history)
+        idx = idx + 1
+        if instruction.pipe_output then
+            globals["print"] = @pipe_print
+        end if
+        result = self.execute(instruction)
+        if instruction.chain_condition == "success" then
+            if not result then return false
+        else if instruction.chain_condition == null or instruction.chain_condition == "none" then
+            bundle_result = result
+            break
+        end if
+        if instruction.pipe_output then
+            globals["print"] = @original_print
+
+            if len(instructions) > idx then
+                instructions[idx + 1].stdin = print_history.join("")
+            end if
+        end if
+    end for
+
+    return bundle_result
+end function
+CommandRegistry.New = function(app_state = {}, logger = Logger.New("quiet"))
+    command_registry = new CommandRegistry
+
+    command_registry.m_app_state = app_state
+    command_registry.m_logger = logger
+
+    return command_registry
+end function

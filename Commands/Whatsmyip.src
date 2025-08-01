@@ -1,0 +1,19 @@
+Whatsmyip = {}
+Whatsmyip.New = function()
+    __whatsmyip_func = function(app, params)
+        app.logger.add_debug("__whatsmyip_func")
+        app.logger.add_debug("with params: " + str(params))
+
+        Utilities.println(Ip.colored(get_shell().host_computer().public_ip()))
+
+        return true
+    end function
+
+    return Command.New({
+        "alias": "whatsmyip",
+        "func_ptr": @__whatsmyip_func, 
+        "description": "Prints the IP of this system.",
+        "example": "`whatsmyip`",
+        "inject": [ "logger" ],
+    })
+end function

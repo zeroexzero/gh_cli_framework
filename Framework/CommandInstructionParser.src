@@ -1,0 +1,140 @@
+CommandInstructionParser = {}
+CommandInstructionParser.m_logger = null
+CommandInstructionParser.generate_instructions_from_input = function(input)
+    instructions = [CommandInstruction.New({})]
+
+    cur_arg = ""
+    cur_command = ""
+    cur_buffer = ""
+
+    command_segments = []
+    buffer = ""
+    quoted = false
+    characters = input.values()
+    characters_len = characters.len()
+    idx = -1
+    while idx < characters_len - 1
+        idx = idx + 1
+        character = characters[idx]
+        // Are we starting/stopping a quoted buffer?
+        if Constants.QUOTE == character then
+            // Double-quotes are escapable via repeat (""escaped string"")
+            if idx < (characters_len - 1) and characters[idx + 1] == Constants.QUOTE then
+                idx = idx + 1
+                buffer = buffer + character
+                continue
+            end if
+            self.m_logger.add_debug("Hit a quote, toggling quoted from '" + quoted + "'")
+            quoted = not quoted
+
+            // We don't send the quote to buffer so just continue after changing quoted
+            continue
+
+        else if not quoted and idx < (characters_len - 1) and (characters[idx] == "|" or characters[idx] == ";" or characters[idx:idx + 2].join("") == "&&" ) then
+            self.m_logger.add_debug("Command chaining detected")
+            previous_instruction = instructions[len(instructions) - 1]
+            previous_instruction.chain_condition = "none"
+            if not len(command_segments) then
+                command_segments.push(buffer)
+                buffer = ""
+            end if
+            previous_instruction.command = trim(command_segments[0])
+            previous_instruction.args = command_segments[1:]
+            if buffer != "" then previous_instruction.args.push(buffer)
+            instructions.push(CommandInstruction.New({}))
+            buffer = ""
+            command_segments = []
+
+            // Pipe
+            if characters[idx] == "|" then
+                previous_instruction.chain_condition = "always"
+                previous_instruction.pipe_output = true
+
+            // Chain command regardless of previous command success
+            else if characters[idx] == ";" then
+                previous_instruction.chain_condition = "always"
+
+            // Success chain
+            else if characters[idx:idx + 2].join("") == "&&" then
+                previous_instruction.chain_condition = "success"
+                idx = idx + 1
+
+            end if
+            self.m_logger.add_debug("Changed previous_instruction and created a new instruction to start populating")
+            continue
+        end if
+
+        // We've hit a space!
+        if character == Constants.SPACE and buffer.len() then
+            self.m_logger.add_debug("Hit a space, we've got to handle that...")
+
+            // We're buffering a quoted string
+            if quoted then
+                self.m_logger.add_debug("Oh wait we're good because we were quoted")
+                buffer = buffer + character
+
+            // We're not buffering a quoted string, we can send the buffer and reset
+            else
+                self.m_logger.add_debug("Not quoted, let's push buffer into command segments and reset buffer")
+                command_segments.push(buffer)
+                buffer = ""
+                self.m_logger.add_debug("Reset buffer")
+            end if
+
+        // Space but no buffer yet, maybe extra spaces used by accident
+        else if character == Constants.SPACE and not quoted and not buffer.len() then
+            // We do nothing, these spaces are "extra" and should be ignored.
+
+        // We can add this character to buffer
+        else
+            buffer = buffer + character
+        end if
+    end while
+
+    self.m_logger.add_debug("Done iterating over input")
+
+    // If we're quoted then there was an error parsing or with input
+    if quoted then
+        self.m_logger.add_warning("Malformed input.")
+        return false
+    end if
+
+    // If we have a non-empty buffer, we send to segments.
+    self.m_logger.add_debug("Buffer was populated (expected), lets' push to command_segments")
+    if buffer != "" then
+        command_segments.push(buffer)
+        buffer = ""
+    end if
+
+    // Take existing segments and make an instruction
+    instruction = instructions[len(instructions) - 1]
+
+    if not command_segments.len() then
+        Utilities.println("Unable to parse command")
+        return false
+    end if
+
+    // Command
+    instruction.command = trim(command_segments[0])
+
+    // Args
+    if command_segments.len() >= 2 then
+        instruction.args = command_segments[1:]
+        if buffer != "" then
+            instruction.args.push(buffer)
+        end if
+    end if
+
+    // Condition, if not set already.
+    if not instruction.chain_condition then instruction.chain_condition = "none"
+
+    return instructions
+end function
+CommandInstructionParser.New = function(logger = null)
+    parser = new CommandInstructionParser
+    if not logger then
+        logger = Logger.New("quiet")
+    end if
+    parser.m_logger = logger
+    return parser
+end function

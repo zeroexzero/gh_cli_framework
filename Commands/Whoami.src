@@ -1,0 +1,19 @@
+Whoami = {}
+Whoami.New = function()
+    __clear_func = function(app, params)
+        app.logger.add_debug("__clear_func")
+        app.logger.add_debug("with params: " + str(params))
+
+        Utilities.println(active_user())
+
+        return true
+    end function
+
+    return Command.New({
+        "alias": "whoami",
+        "func_ptr": @__clear_func, 
+        "description": "Prints the username of the current & active user.",
+        "example": "`whoami`",
+        "inject": [ "logger" ],
+    })
+end function

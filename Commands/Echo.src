@@ -1,0 +1,35 @@
+Echo = {}
+Echo.New = function()
+    __echo_func = function(app, params)
+        app.logger.add_debug("__echo_func")
+        app.logger.add_debug("with params: " + str(params))
+
+        trailing = Constants.EOL
+        if params.no_new_line then trailing = ""
+
+        Utilities.println(params.in_string + trailing)
+        return true
+    end function
+
+    return Command.New({
+        "alias": "echo",
+        "func_ptr": @__echo_func, 
+        "description": "Print text on screen.",
+        "example": "`echo ""Hello world""`",
+        "inject": [ "logger" ],
+        "params": {
+            "no_new_line": CommandParam.New({
+                "description": "Do not output the trailing EOL.",
+                "type": "null",
+                "optional": true,
+                "flags": [ "--no-new-line", "-n" ],
+            }),
+            "in_string": CommandParam.New({
+                "description": "The string to display.",
+                "type": "string",
+                "optional": false,
+                "position": 0,
+            }),
+        },
+    })
+end function

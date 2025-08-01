@@ -1,0 +1,175 @@
+Ip = {}
+Ip.reserved_ranges = [
+    [0, 16777215],            // 0.0.0.0 - 0.255.255.255
+    [167772160, 184549375],   // 10.0.0.0 - 10.255.255.255
+    [1681915904, 1686110207], // 100.64.0.0 - 100.127.255.255
+    [2130706432, 2147483647], // 127.0.0.0 - 127.255.255.255
+    [2851995648, 2852061183], // 169.254.0.0 - 169.254.255.255
+    [2886729728, 2887778303], // 172.16.0.0 - 172.31.255.255
+    [3221225472, 3221225727], // 192.0.0.0 - 192.0.0.255
+    [3221225984, 3221226239], // 192.0.2.0 - 192.0.2.255
+    [3227017984, 3227018239], // 192.88.99.0 - 192.88.99.255
+    [3232235520, 3232301055], // 192.168.0.0 - 192.168.255.255
+    [3323068416, 3323199487], // 198.18.0.0 - 198.19.255.255
+    [3325256704, 3325256959], // 198.51.100.0 - 198.51.100.255
+    [3405803776, 3405804031], // 203.0.113.0 - 203.0.113.255
+    [3758096384, 4026531839], // 224.0.0.0 - 239.255.255.255
+    [3925606400, 3925606655], // 233.252.0.0 - 233.252.0.255
+    [4026531840, 4294967294], // 240.0.0.0 - 255.255.255.254
+    [4294967295, 4294967295], // 255.255.255.255 - 255.255.255.255
+]
+Ip.from = function(in_str)
+    ip = in_str
+    if lower(trim(ip)) == "random" then
+        ip = Ip.random_wan()
+    end if
+    if not is_valid_ip(ip) then
+        domain = ip
+        if domain.indexOf("www.") != 0 then domain = "www." + domain
+        ip = nslookup(domain)
+    end if
+    if not is_valid_ip(ip) then
+        return false
+    end if
+    return ip
+end function
+Ip.to_int32 = function(ip_address)
+    octet_strs = ip_address.split("\.")
+    if len(octet_strs) != 4 then return 0
+    exp = 24
+    ret_int = 0
+    for octet_str in octet_strs
+        octet = to_int(octet_str)
+        if typeof(octet) != "number" then return 0
+        ret_int = ret_int + (octet * (2 ^ exp))
+        exp = exp - 8
+    end for
+    return ret_int
+end function
+Ip.is_reserved = function(ip_address)
+    if not is_valid_ip(ip_address) or is_lan_ip(ip_address) then return true
+    ip32 = Ip.to_int32(ip_address)
+    for ip32_range in Ip.reserved_ranges
+        if ip32 >= ip32_range[0] and ip32 <= ip32_range[1] then return true
+    end for
+    return false
+end function
+Ip.random_wan = function(recur = 0, ping_from = null)
+    if recur > 1024 then return null
+    if ping_from == null then ping_from = get_shell()
+    ip_parts = []
+    min = 0
+    max = 255
+    generated_ip = ""
+    for _ in range(1, 4) ip_parts.push(floor(rnd * (max - min + 1) + min))
+
+    generated_ip = ip_parts.join(".")
+    valid_wan = not Ip.is_reserved(generated_ip)
+
+    can_ping = false
+    if valid_wan then can_ping = ping_from.ping(generated_ip) == 1
+
+    can_get_router = false
+    if valid_wan and can_ping then can_get_router = get_router(generated_ip) != null
+
+    if not valid_wan or not can_ping or not can_get_router then
+        return Ip.random_wan(recur + 1, ping_from)
+    end if
+
+    return generated_ip
+end function
+
+// If you're wondering what this does... I'm sorry
+// It converts an IP into a quaternion that then is normalized and then
+// rotated on a vector "base_color".
+// Yes, derive a color from an IP by treating it as a quaternion...
+// Why!?: 2am brain thought this a fun project and it was.
+Ip.colored = function(ip)
+    // This can be changed to give you more of a "unique" set of colors.
+    base_color = [pi() / 4, pi() / 4, pi() / 4]
+
+    quat_normalize = function(q)
+        x = q[0]
+        y = q[1]
+        z = q[2]
+        w = q[3]
+        m = sqrt(x*x + y*y + z*z + w*w)
+        return [x/m, y/m, z/m, w/m]
+    end function
+
+    quat_mul = function(q1, q2)
+        x1 = q1[0]
+        y1 = q1[1]
+        z1 = q1[2]
+        w1 = q1[3]
+
+        x2 = q2[0]
+        y2 = q2[1]
+        z2 = q2[2]
+        w2 = q2[3]
+
+        return quat_normalize([
+            w1*x2 + x1*w2 + y1*z2 - z1*y2,
+            w1*y2 - x1*z2 + y1*w2 + z1*x2,
+            w1*z2 + x1*y2 - y1*x2 + z1*w2,
+            w1*w2 - x1*x2 - y1*y2 - z1*z2,
+        ])
+    end function
+
+    quat_conj = function(q)
+        return quat_normalize([-q[0], -q[1], -q[2], q[3]])
+    end function
+
+    quat_rotate_on_vec = function(q, v)
+        qv = quat_normalize([v[0], v[1], v[2], 0])
+        q_onj = quat_conj(q)
+        qv_rot = quat_mul(quat_mul(q, qv), q_onj)
+        return [qv_rot[0], qv_rot[1], qv_rot[2]]
+    end function
+
+    quat_from_ip = function(ip)
+        octets = ip.split("\.")
+        if len(octets) != 4 then return [0, 0, 0, 1]
+        return quat_normalize([
+            val(octets[0]) / 255,
+            val(octets[1]) / 255,
+            val(octets[2]) / 255,
+            val(octets[3]) / 255,
+        ])
+    end function
+
+    byte_clamp = function(x)
+        if x < 0 then return 0
+        if x > 255 then return 255
+        return floor(x)
+    end function
+
+    byte_to_hex = function(n)
+        hex = "00"
+        if n != 0 then
+            while n > 0
+                mod = n % 16
+                hex = "0123456789ABCDEF"[mod] + hex
+                n = floor(n / 16)
+            end while
+        end if
+        return hex[:2]
+    end function
+
+    color_from_vec = function(v)
+        return [
+            byte_to_hex(byte_clamp(v[0]*255 + 0.5)),
+            byte_to_hex(byte_clamp(v[1]*255 + 0.5)),
+            byte_to_hex(byte_clamp(v[2]*255 + 0.5)),
+            "FF",
+        ].join("")
+    end function
+
+    color_from_ip = function(ip)
+        q = quat_from_ip(ip)
+        rotated = quat_rotate_on_vec(q, base_color)
+        return color_from_vec(rotated)
+    end function
+
+    return "<color=#" + color_from_ip(ip) + ">" + ip + "</color>"
+end function

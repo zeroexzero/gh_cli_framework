@@ -1,0 +1,79 @@
+Nmap = {}
+Nmap.New = function()
+    __nmap_func = function(app, params)
+        app.logger.add_debug("__nmap_func")
+        app.logger.add_debug("with params: " + str(params))
+
+        if not get_shell().host_computer().is_network_active() then
+            Utilities.println("No internet access.")
+            return false
+        end if
+
+        ipAddress = params.ip
+        is_lan = is_lan_ip(ipAddress)
+
+        if is_lan then
+            router = get_router()
+        else 
+            router = get_router(ipAddress)
+        end if
+
+        if router == null then
+            Utilities.println("ip address not found")
+            return false
+        end if
+        ports = null
+
+        if not is_lan then
+            ports = router.used_ports()
+        else
+            ports = router.device_ports(ipAddress)
+        end if
+
+        if ports == null then
+            Utilities.println("ip address not found")
+            return false
+        end if
+        if typeof(ports) == "string" then
+            Utilities.println(ports)
+            return false
+        end if
+            
+        info = "PORT STATE SERVICE VERSION LAN"   
+        Utilities.println(Constants.EOL + "Starting nmap v1.1 at " + current_date())
+        Utilities.println("Interesting ports on " + params.ip + Constants.EOL)
+        if(ports.len == 0) then
+            Utilities.println("Scan finished. No open ports.")
+            return false
+        end if
+
+        for port in ports
+        service_info = router.port_info(port)
+        lan_ips = port.get_lan_ip()
+        port_status = "open"
+
+        if(port.is_closed() and not is_lan) then
+            port_status = "closed"
+        end if
+        info = info + Constants.EOL + port.port_number() + " " + port_status + " " + service_info + " " + lan_ips
+        end for
+        Utilities.println(format_columns(info) + Constants.EOL)
+
+        return true
+    end function
+
+    return Command.New({
+        "alias": "nmap",
+        "func_ptr": @__nmap_func, 
+        "description": "Display information about the ports of a given IP address.",
+        "example": "`nmap 127.0.0.1` or `nmap random`",
+        "inject": [ "logger" ],
+        "params": {
+            "ip": CommandParam.New({
+                "description": "The target IP to scan.",
+                "type": "net_address",
+                "position": 0,
+            }),
+        },
+    })
+end function

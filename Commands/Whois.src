@@ -1,0 +1,27 @@
+Whois = {}
+Whois.New = function()
+    __whois_func = function(app, params)
+        app.logger.add_debug("__whois_func")
+        app.logger.add_debug("with params: " + str(params))
+
+        Utilities.println(whois(Ip.from(params.ip)))
+
+        return true
+    end function
+
+    return Command.New({
+        "alias": "whois",
+        "func_ptr": @__whois_func,
+        "description": "Used to display whois information of a given network.",
+        "example": "`whois 1.1.1.1` or `whois www.example.org`",
+        "inject": [ "logger" ],
+        "params": {
+            "ip": CommandParam.New({
+                "description": "The net address (IP or domain) to show whois info for.",
+                "type": "net_address",
+                "optional": false,
+                "position": 0,
+            }),
+        },
+    })
+end function

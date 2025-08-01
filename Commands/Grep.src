@@ -1,0 +1,111 @@
+Grep = {}
+Grep.New = function()
+    __grep_func = function(app, params)
+        app.logger.add_debug("__grep_func")
+        app.logger.add_debug("with params: " + str(params))
+
+        if app.stdin == "" then
+            app.logger.add_debug("No stdin")
+            Utilities.println("Grep utilizes stdin, which means you must ""pipe"" data into the command")
+            Utilities.println("E.g. `ps | grep ""kernel_task""`")
+            return false
+        end if
+        app.logger.add_debug("We have stdin")
+
+        grep_matches = []
+
+        // Setup search function
+        search_func = @indexOf
+        if params.regex then
+            app.logger.add_debug("Using regex...")
+            search_func = function(input, patterm)
+                if is_match(input, patterm) then return true
+                return null // We want to behave like indexOf, so we return truthy or null
+            end function
+        end if
+
+        pattern = params.pattern
+        if params.ignore_case then
+            app.logger.add_debug("Ignoring case")
+            pattern = lower(pattern)
+        end if
+
+        stdin_lines = app.stdin.split(Constants.EOL)
+        for line in stdin_lines
+            compare_line = line
+            if params.ignore_case then compare_line = lower(line)
+
+            app.logger.add_debug("Calling search_func with")
+            app.logger.add_debug("""" + compare_line + """")
+            app.logger.add_debug("and")
+            app.logger.add_debug("""" + pattern + """")
+            if search_func(compare_line, pattern) != null then
+                if params.only_matching then
+                    if params.regex then
+                        app.logger.add_debug("Calling matches")
+                        matches_map = matches(compare_line, pattern)
+                        nline = ""
+                        for match in matches_map
+                            nline = nline + line[match.key:match.key + match.value.len() + 1]
+                        end for
+                        line = nline
+                    else
+                        matches_map = {}
+                        offset = -1
+                        idx = compare_line.indexOf(pattern, offset)
+                        while idx != null
+                            offset = idx + pattern.len() - 1
+                            matches_map[idx] = line[idx:offset]
+                            idx = compare_line.indexOf(pattern, offset)
+                        end while
+
+                        nline = ""
+                        for match in matches_map
+                            nline = nline + line[match.key:match.key + match.value.len() + 1]
+                        end for
+                        line = nline
+                    end if
+                end if
+                app.logger.add_debug("Pushing grep match")
+                grep_matches.push(line)
+            end if
+        end for
+
+        Utilities.println(grep_matches.join(Constants.EOL))
+        return true
+    end function
+
+    return Command.New({
+        "alias": "grep",
+        "func_ptr": @__grep_func, 
+        "description": "Search & match patterns in stdin (commands piped into grep)",
+        "example": "`echo -n ""Hello world"" | grep -i -o ""hello""`",
+        "inject": [ "logger", "state", "stdin" ],
+        "params": {
+            "regex": CommandParam.New({
+                "description": "!!! GAME CRASH MAY OCCUR !!! Treat pattern as regex. If you pass an invalid pattern, the game will crash. BE CAREFUL.",
+                "type": "null",
+                "optional": true,
+                "flags": [ "--regex", "-e" ]
+            }),
+            "ignore_case": CommandParam.New({
+                "description": "Ignore case when matching.",
+                "type": "null",
+                "optional": true,
+                "flags": [ "--ignore-case", "-i" ]
+            }),
+            "only_matching": CommandParam.New({
+                "description": "Show only the matched lines.",
+                "type": "null",
+                "optional": true,
+                "flags": [ "--only-matching", "-o" ]
+            }),
+            "pattern": CommandParam.New({
+                "description": "The pattern to search stdin with.",
+                "type": "string",
+                "optional": false,
+                "position": 0,
+            }),
+        },
+    })
+end function

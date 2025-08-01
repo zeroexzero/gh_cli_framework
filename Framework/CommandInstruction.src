@@ -1,0 +1,16 @@
+CommandInstruction = {}
+CommandInstruction.command = null
+CommandInstruction.args = []
+CommandInstruction.chain_condition = null
+CommandInstruction.pipe_output = false
+CommandInstruction.stdin = ""
+
+CommandInstruction.New = function(obj)
+    has_index = @Utilities.has_index
+    command_instruction = new CommandInstruction
+    for idx in obj.indexes()
+        if idx == "classID" or idx == "__isa" then continue
+        if has_index(command_instruction, idx) then command_instruction[idx] = obj[idx]
+    end for
+    return command_instruction
+end function

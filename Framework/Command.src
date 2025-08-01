@@ -1,0 +1,19 @@
+Command = {}
+Command.alias = ""
+Command.func_ptr = null
+Command.params = {}
+Command.description = ""
+Command.example = ""
+Command.inject = [ "logger" ]
+Command.access_code = null
+Command.New = function(obj)
+    command = new Command
+    if obj.hasIndex("alias") then command.alias = obj.alias
+    if obj.hasIndex("func_ptr") then command.func_ptr = @obj.func_ptr
+    if obj.hasIndex("params") then command.params = obj.params
+    if obj.hasIndex("description") then command.description = obj.description
+    if obj.hasIndex("example") then command.example = obj.example
+    if obj.hasIndex("inject") then command.inject = obj.inject
+    if obj.hasIndex("access_code") then command.access_code = obj.access_code
+    return command
+end function

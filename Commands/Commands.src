@@ -1,0 +1,40 @@
+Commands = {}
+Commands.New = function()
+    __commands_func = function(app, params)
+        app.logger.add_debug("__commands_func")
+        app.logger.add_debug("with params: " + str(params))
+        table = ""
+
+        largest_command_name_len = 0
+
+        app.logger.add_debug("Iterating through app.commands to determine longest string")
+        for command_kv in app.commands
+            command_len = command_kv.value.alias.len()
+            if largest_command_name_len < command_len then
+                largest_command_name_len = command_len
+            end if
+        end for
+
+        app.logger.add_debug("Formatting command keys for printing")
+        ws = "                                                                "
+        for command_kv in app.commands
+            access_code = command_kv.value.access_code
+            if access_code and app.state.access_code != access_code then continue
+            command_ws = (command_kv.value.alias + ws)[0:largest_command_name_len]
+            table = table + Constants.EOL + command_ws
+            table = table + Constants.TAB
+            table = table + command_kv.value.description
+        end for
+
+        Utilities.println(table)
+        return true
+    end function
+
+    return Command.New({
+        "alias": "commands",
+        "func_ptr": @__commands_func, 
+        "description": "Display information about all known commands.",
+        "example": "commands",
+        "inject": [ "commands", "logger", "state" ],
+    })
+end function

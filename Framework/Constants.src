@@ -1,0 +1,10 @@
+Constants = {}
+Constants.EOL = char(10)
+Constants.QUOTE = char(34)
+Constants.SPACE = char(32)
+Constants.TAB = char(9)
+Constants.PIPE = char(124)
+Constants.CR = char(13)
+
+Constants.PRETTY_PRINT_IDX_LIMIT = 1024
+Constants.PRETTY_PRINT_DEPTH_LIMIT = 64

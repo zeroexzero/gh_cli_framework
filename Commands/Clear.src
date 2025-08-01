@@ -1,0 +1,19 @@
+Clear = {}
+Clear.New = function()
+    __clear_func = function(app, params)
+        app.logger.add_debug("__clear_func")
+        app.logger.add_debug("with params: " + str(params))
+
+        clear_screen()
+
+        return true
+    end function
+
+    return Command.New({
+        "alias": "clear",
+        "func_ptr": @__clear_func, 
+        "description": "Clears the terminal of text.",
+        "example": "`clear`",
+        "inject": [ "logger" ],
+    })
+end function

@@ -1,0 +1,32 @@
+Logger = {}
+Logger.print = @print
+Logger.m_levels = {
+	"debug": 0,
+	"info": 1,
+	"warning": 2,
+	"error": 3,
+	"quiet": 4,
+}
+Logger.m_level = "info"
+Logger.add = function(data, level)
+	if Logger.m_levels[level] >= self.m_levels[self.m_level] then
+		Logger.print(level + ": " + str(data))
+	end if
+end function
+Logger.add_debug = function(data)
+	self.add(data, "debug")
+end function
+Logger.add_info = function(data)
+	self.add(data, "info")
+end function
+Logger.add_warning = function(data)
+	self.add(data, "warning")
+end function
+Logger.add_error = function(data)
+	self.add(data, "error")
+end function
+Logger.New = function(level)
+	logger = new Logger
+	logger.m_level = level
+	return logger
+end function

@@ -1,0 +1,110 @@
+Help = {}
+Help.New = function()
+    __help_func = function(app, params)
+        logger = app.logger
+        logger.add_debug("__help_func")
+        logger.add_debug("with params: " + str(params))
+
+        target_command_alias = params.command
+        if not target_command_alias then
+            Utilities.println("Must supply a command to display help text for.")
+            return false
+        end if
+
+        // If the provided command isn't present we should convey this
+        logger.add_debug("Checking for existence of the target command '" + target_command_alias + "'")
+        if not app.commands.hasIndex(target_command_alias) then
+            Utilities.print_unknown_command(target_command_alias)
+            return false
+        end if
+
+        logger.add_debug("Grabbing the target command from map")
+        target_command = app.commands[target_command_alias]
+
+        // Create and display usage text of the command
+        logger.add_debug("Starting to build usage text...")
+        usage_str = "Usage: " + Constants.EOL
+        usage_str = usage_str + "`" + target_command.alias
+        options_str = "Options:" + Constants.EOL
+        example_str = "Example:" + Constants.EOL + target_command.example
+
+        logger.add_debug("Iterating over target_command.params")
+        for param_kv in target_command.params
+            param_def = param_kv.value
+
+            param_str = ""
+            flags = param_def.flags
+            logger.add_debug("Iterating over flags")
+            for flag in flags
+                param_str = param_str + "|" + flag
+            end for
+            param_str = param_str.values()[1:].join("")
+
+            // Populate options str for this param
+            options_str = options_str + param_str
+
+            // If it's optional, indicate that with []
+            // E.g. `help [-v|--verbose] {command}`
+            logger.add_debug("Handling optional/required formatting")
+            if not param_def.flags.len() then options_str = options_str + "{" + param_kv.key + "}"
+            if param_def.optional then
+                if param_str != "" then
+                    param_str = "[" + param_str + "]"
+                end if
+                options_str = options_str + "  optional"
+            else
+                options_str = options_str + "  required"
+            end if
+
+            // If the user is able to specify a value for this flag, indicate that
+            logger.add_debug("Handling param value formatting")
+            if param_def.type != "null" then param_str = param_str + " {" + param_kv.key + "}"
+
+            // If the param has a description, add it to the options text
+            logger.add_debug("Handling description formatting")
+            if param_def.description != "" then
+                options_str = options_str + "  " + param_def.description
+            end if
+
+            // We're done decorating the options text for this param, let's newline
+            options_str = options_str + Constants.EOL
+
+            logger.add_debug("Concat usage + param strings")
+            usage_str = usage_str + " " + trim(param_str)
+        end for
+
+        usage_str = usage_str + "`" + Constants.EOL + Constants.EOL
+
+        // Description
+        logger.add_debug("Handle appending description text if available")
+        if target_command.description != "" then
+            usage_str = usage_str + target_command.description
+        end if
+
+        // Options
+        logger.add_debug("Handle appending options text if available")
+        if target_command.params.len() then usage_str = usage_str + Constants.EOL + Constants.EOL + trim(options_str)
+        if target_command.example != "" then usage_str = usage_str + Constants.EOL + Constants.EOL + example_str
+
+        logger.add_debug("Printing usage text")
+        Utilities.println(usage_str)
+        return true
+    end function
+
+    return Command.New({
+        "alias": "help",
+        "func_ptr": @__help_func, 
+        "description": "Display information about a given command.",
+        "example": "help commands",
+        "inject": [ "commands", "logger" ],
+        "params": {
+            "command": CommandParam.New({
+                "description": "A command to display information about.",
+                "type": "string",
+                "optional": true,
+                "default": "help",
+                "position": 0,
+            }),
+        },
+    })
+end function
