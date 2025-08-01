@@ -2,16 +2,62 @@
 
 This framework contains everything you need to begin writing your own command-line interface program.
 
-## Entrypoint / main
+## Features
+
+**Param quote-escaping**
+
+```
+$ echo -n "Simple ""quoted"" test"
+Simple "quoted" test
+```
+
+**Command chaining**
+
+```
+$ echo -n hello && echo -n world
+hello
+world
+
+$ echo "Hello world" | grep -o -i hello
+Hello
+```
+
+**Positional arguments**
+
+```
+$ command_name param_0 param_1
+```
+
+**Flags**
+
+```
+$ command_name -x param_0 -y
+```
+
+**Logger**
+
+```lua
+log_level = "warning"
+logger = Logger.New(log_level)
+logger.add_debug("Verbose message")
+logger.add_info("Informational message")
+logger.add_warning("Warning message") 
+logger.add_error("Actionable error message")
+logger.add_quiet("Never seen")
+```
+
+## Development
+
+### Entrypoint / main
 
 The program "starts" at `./myprogram.src`.
 
-## Commands
+### Commands
 
 Commands are defined in `./Commands/` and are registered in `./myprogram.src`
 
 
-## Utilities & Helper functions
+### Utilities & Helper functions
 
 Included are some helper classes such as
 
@@ -19,7 +65,7 @@ Included are some helper classes such as
 * Logger
 * Utilities
 
-## Building
+### Building
 
 This project structure requires you use Greybel unless you want to go insane.
 
