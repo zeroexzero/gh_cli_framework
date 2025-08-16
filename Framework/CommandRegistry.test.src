@@ -1,0 +1,241 @@
+#import test from ../modules/0x0Test/src/test.src
+
+#include ./Constants.src
+#include ./Utilities.src
+#include ./Logger.src
+#include ./Command.src
+#include ./CommandInstruction.src
+#include ./CommandInstructionParser.src
+#include ./CommandParam.src
+#include ./CommandRegistry.src
+
+test("Framework/CommandRegistry").setup = function()
+    self.generate_increment_command = function()
+        __command_func = function(app, params)
+            app.state.counter = (app.state.counter * params.multiplier) + params.amount
+            return not params.return_false
+        end function
+        return Command.New({
+            "alias": "increment",
+            "func_ptr": @__command_func, 
+            "description": "Test command.",
+            "example": "`increment`",
+            "inject": [ "state" ],
+            "params": {
+                "return_false": CommandParam.New({
+                    "description": "Return false instead of true.",
+                    "type": "null",
+                    "optional": true,
+                    "flags": [ "-f" ],
+                }),
+                "multiplier": CommandParam.New({
+                    "description": "How much to multiply the current counter by before adding.",
+                    "type": "number",
+                    "optional": true,
+                    "default": 1,
+                    "flags": [ "--multiplier", "-m" ],
+                }),
+                "amount": CommandParam.New({
+                    "description": "The amount to increment count by.",
+                    "type": "number",
+                    "optional": true,
+                    "default": 1,
+                    "position": 0,
+                }),
+            },
+        })
+    end function
+    super.setup()
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("New returns as expected").is = function(assert)
+    // Specify no logger, defaults to quiet
+    assert.is_true(CommandRegistry.New() isa CommandRegistry)
+    assert.equals(CommandRegistry.New().m_logger.m_level, "quiet")
+
+    // Specify error logger, uses that logger
+    error_logger = Logger.New("error")
+    assert.is_true(CommandRegistry.New({}, error_logger) isa CommandRegistry)
+    assert.equals(CommandRegistry.New({}, error_logger).m_logger.m_level, "error")
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("app_state is correctly set").is = function(assert)
+    app_state = {}
+    registry = CommandRegistry.New(app_state)
+    assert.equals(0, len(registry.m_app_state.indexes()))
+    app_state.test = [ true ]
+    assert.is_true(registry.m_app_state.test[0])
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("handle will call desired command(s)").is = function(assert)
+    self = test("Framework/CommandRegistry")
+    app_state = { "counter": 0 }
+
+    registry = CommandRegistry.New(app_state)
+    registry.register(self.generate_increment_command())
+
+    // 0 + 1 == 1
+    registry.handle("increment 1")
+    assert.equals(1, app_state.counter)
+
+    // 1 + 1 == 2
+    registry.handle("increment 1")
+    assert.equals(2, app_state.counter)
+
+    // 2 * 10 + 1 = 21
+    registry.handle("increment -m 10 1")
+    assert.equals(21, app_state.counter)
+
+    // ((21 * 2 + 5) * 2 + 5) + 1
+    // -f means return falsy so the -m 1000 1000 should never run
+    registry.handle("increment -m 2 5 ; increment -m 2 5 ; increment -f && increment -m 1000 1000")
+    assert.equals(100, app_state.counter)
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("execute will handle instructions").is = function(assert)
+    self = test("Framework/CommandRegistry")
+    app_state = { "counter": 1 }
+    registry = CommandRegistry.New(app_state)
+    registry.register(self.generate_increment_command())
+
+    registry.execute(CommandInstruction.New({
+        "command": "increment",
+        "args": "-m 10 2".split(Constants.SPACE),
+        "chain_condition": "none",
+        "pipe_output": false,
+        "stdin": "",
+    }))
+    assert.equals(12, app_state.counter)
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("validate_param_val_map correctly validates param values").is = function(assert)
+    generate_param_map = function()
+        return {
+            "foobar": {
+                "param_definition": CommandParam.New({
+                    "description": "",
+                    "type": "REPLACE_ME",
+                    "optional": false,
+                    "position": 0,
+                }),
+                "param_value": "REPLACE_ME",
+            },
+        }
+    end function
+    registry = CommandRegistry.New()
+    assertions = [
+        // number
+        { "assert": true,  "type": "number", "value": 1},
+        { "assert": true,  "type": "number", "value": 0},
+        { "assert": false, "type": "number", "value": ""},
+        { "assert": false, "type": "number", "value": "a"},
+        { "assert": false, "type": "number", "value": "1"},
+        { "assert": false, "type": "number", "value": null},
+        { "assert": false, "type": "number", "value": []},
+        { "assert": false, "type": "number", "value": {}},
+
+        // string
+        { "assert": false, "type": "string", "value": 1},
+        { "assert": false, "type": "string", "value": 0},
+        { "assert": true,  "type": "string", "value": ""},
+        { "assert": true,  "type": "string", "value": "a"},
+        { "assert": true,  "type": "string", "value": "1"},
+        { "assert": false, "type": "string", "value": null},
+        { "assert": false, "type": "string", "value": []},
+        { "assert": false, "type": "string", "value": {}},
+
+        // bool
+        { "assert": true,  "type": "bool",   "value": 1},
+        { "assert": true,  "type": "bool",   "value": 0},
+        { "assert": false, "type": "bool",   "value": ""},
+        { "assert": false, "type": "bool",   "value": "a"},
+        { "assert": false, "type": "bool",   "value": "1"},
+        { "assert": false, "type": "bool",   "value": null},
+        { "assert": false, "type": "bool",   "value": []},
+        { "assert": false, "type": "bool",   "value": {}},
+    ]
+    for assertion in assertions.values()
+        param_map = generate_param_map()
+        param_map.foobar.param_definition.type = assertion.type
+        param_map.foobar.param_value = assertion.value
+        message = "expected "
+        if assertion.value == null then
+            message = message + "NULL"
+        else 
+            message = message + """" + str(assertion.value) + """"
+        end if
+        message = message + " to"
+        if not assertion.assert then message = message + " not"
+        message = message + " be a valid " + assertion.type
+        assert.equals(assertion.assert, registry.validate_param_val_map(param_map), message)
+    end for
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("generate_param_val_map will properly generate").is = function(assert)
+    self = test("Framework/CommandRegistry")
+    command = self.generate_increment_command()
+    registry = CommandRegistry.New()
+    registry.register(command)
+
+    args = "-m 10 2".split(Constants.SPACE)
+    param_val_map = registry.generate_param_val_map(command, args)
+    assert.equals(null, param_val_map.return_false.param_value)
+    assert.equals("Return false instead of true.", param_val_map.return_false.param_definition.description)
+    assert.equals(10, param_val_map.multiplier.param_value)
+    assert.equals("How much to multiply the current counter by before adding.", param_val_map.multiplier.param_definition.description)
+    assert.equals(2, param_val_map.amount.param_value)
+    assert.equals("The amount to increment count by.", param_val_map.amount.param_definition.description)
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("get_command_param_value_by_name will properly return param value").is = function(assert)
+    self = test("Framework/CommandRegistry")
+    command = self.generate_increment_command()
+    registry = CommandRegistry.New()
+    registry.register(command)
+
+    args = "-m 10 2".split(Constants.SPACE)
+    assert.equals(null, registry.get_command_param_value_by_name(command, args, "return_false"))
+    assert.equals(10, registry.get_command_param_value_by_name(command, args, "multiplier"))
+    assert.equals(2, registry.get_command_param_value_by_name(command, args, "amount"))
+
+    args = "-f 2".split(Constants.SPACE)
+    assert.equals(true, registry.get_command_param_value_by_name(command, args, "return_false"))
+    assert.equals(1, registry.get_command_param_value_by_name(command, args, "multiplier"))
+    assert.equals(2, registry.get_command_param_value_by_name(command, args, "amount"))
+
+    // Not a param
+    assert.equals(null, registry.get_command_param_value_by_name(command, args, "foobar"))
+end function
+
+// @param {Assert} assert
+test("Framework/CommandRegistry").expect("register only registers valid").is = function(assert)
+    self = test("Framework/CommandRegistry")
+    command = self.generate_increment_command()
+    registry = CommandRegistry.New()
+
+    // First increment command allowed
+    assert.is_true(registry.register(command))
+
+    // Second increment command is duplicate -- not allowed
+    assert.is_false(registry.register(command))
+    registry = CommandRegistry.New()
+
+    // increment command is missing func_ptr -- not allowed
+    command = self.generate_increment_command()
+    command.remove("func_ptr")
+    assert.is_false(registry.register(command))
+
+    // increment command is non-valid func_ptr -- not allowed
+    command = self.generate_increment_command()
+    command.func_ptr = true
+    assert.is_false(registry.register(command))
+end function
+
+test()

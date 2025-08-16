@@ -1,0 +1,6 @@
+#include ./Framework/Command.test.src
+#include ./Framework/CommandInstruction.test.src
+#include ./Framework/CommandInstructionParser.test.src
+#include ./Framework/CommandParam.test.src
+#include ./Framework/CommandRegistry.test.src
+#include ./Framework/Ip.test.src

@@ -1,0 +1,92 @@
+#import test from ../modules/0x0Test/src/test.src
+
+#include ./Ip.src
+
+test("Framework/Ip").setup = function()
+    super.setup()
+    self.print_statements = []
+    globals.nslookup = function(domain)
+        if typeof(domain) != "string" or not len(domain) or len(domain.split("\.")) != 3 then return null
+        return "1.1.1.1"
+    end function
+end function
+
+test("Framework/Ip").teardown = function()
+    globals.remove("nslookup")
+    super.teardown()
+end function
+
+// @param {Assert} assert
+test("Framework/Ip").expect("from converts domains and returns ips").is = function(assert)
+    assert.is_false(Ip.from(""))
+    assert.is_false(Ip.from("asd"))
+    assert.is_false(Ip.from("1.1.1."))
+    assert.equals("1.1.1.1", Ip.from("www.foobar.com"))
+    assert.equals("1.1.1.1", Ip.from("foobar.com"))
+    assert.equals("1.1.1.1", Ip.from("1.1.1.1"))
+end function
+
+// @param {Assert} assert
+test("Framework/Ip").expect("to_int32 converts properly").is = function(assert)
+    assert.equals(0, Ip.to_int32("0.0.0.0"))
+    assert.equals(538976288, Ip.to_int32("32.32.32.32"))
+    assert.equals(4294967295, Ip.to_int32("255.255.255.255"))
+end function
+
+// @param {Assert} assert
+test("Framework/Ip").expect("is_reserved is correct").is = function(assert)
+    assert.is_true(Ip.is_reserved("0.0.0.0"))
+    assert.is_true(Ip.is_reserved("10.0.0.0"))
+    assert.is_true(Ip.is_reserved("100.64.0.0"))
+    assert.is_true(Ip.is_reserved("127.0.0.0"))
+    assert.is_true(Ip.is_reserved("169.254.0.0"))
+    assert.is_true(Ip.is_reserved("172.16.0.0"))
+    assert.is_true(Ip.is_reserved("192.0.0.0"))
+    assert.is_true(Ip.is_reserved("192.0.2.0"))
+    assert.is_true(Ip.is_reserved("192.88.99.0"))
+    assert.is_true(Ip.is_reserved("192.168.0.0"))
+    assert.is_true(Ip.is_reserved("198.18.0.0"))
+    assert.is_true(Ip.is_reserved("198.51.100.0"))
+    assert.is_true(Ip.is_reserved("203.0.113.0"))
+    assert.is_true(Ip.is_reserved("224.0.0.0"))
+    assert.is_true(Ip.is_reserved("233.252.0.0"))
+    assert.is_true(Ip.is_reserved("240.0.0.0"))
+    assert.is_true(Ip.is_reserved("255.255.255.255"))
+    assert.is_true(Ip.is_reserved("0.255.255.255"))
+    assert.is_true(Ip.is_reserved("10.255.255.255"))
+    assert.is_true(Ip.is_reserved("100.127.255.255"))
+    assert.is_true(Ip.is_reserved("127.255.255.255"))
+    assert.is_true(Ip.is_reserved("169.254.255.255"))
+    assert.is_true(Ip.is_reserved("172.31.255.255"))
+    assert.is_true(Ip.is_reserved("192.0.0.255"))
+    assert.is_true(Ip.is_reserved("192.0.2.255"))
+    assert.is_true(Ip.is_reserved("192.88.99.255"))
+    assert.is_true(Ip.is_reserved("192.168.255.255"))
+    assert.is_true(Ip.is_reserved("198.19.255.255"))
+    assert.is_true(Ip.is_reserved("198.51.100.255"))
+    assert.is_true(Ip.is_reserved("203.0.113.255"))
+    assert.is_true(Ip.is_reserved("239.255.255.255"))
+    assert.is_true(Ip.is_reserved("233.252.0.255"))
+    assert.is_true(Ip.is_reserved("255.255.255.254"))
+    assert.is_true(Ip.is_reserved("0.32.32.32"))
+    assert.is_true(Ip.is_reserved("10.32.32.32"))
+    assert.is_true(Ip.is_reserved("100.127.32.32"))
+    assert.is_true(Ip.is_reserved("127.32.32.32"))
+    assert.is_true(Ip.is_reserved("169.254.32.32"))
+    assert.is_true(Ip.is_reserved("172.31.32.32"))
+    assert.is_true(Ip.is_reserved("192.0.0.32"))
+    assert.is_true(Ip.is_reserved("192.0.2.32"))
+    assert.is_true(Ip.is_reserved("192.88.99.32"))
+    assert.is_true(Ip.is_reserved("192.168.32.32"))
+    assert.is_true(Ip.is_reserved("198.19.32.32"))
+    assert.is_true(Ip.is_reserved("198.51.100.32"))
+    assert.is_true(Ip.is_reserved("203.0.113.32"))
+    assert.is_true(Ip.is_reserved("239.32.32.32"))
+    assert.is_true(Ip.is_reserved("233.252.0.32"))
+
+    assert.is_false(Ip.is_reserved("1.1.1.1"))
+    assert.is_false(Ip.is_reserved("11.1.1.1"))
+    assert.is_false(Ip.is_reserved("100.128.1.1"))
+end function
+
+test()

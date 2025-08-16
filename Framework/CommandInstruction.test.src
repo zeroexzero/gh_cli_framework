@@ -1,0 +1,52 @@
+#import test from ../modules/0x0Test/src/test.src
+
+#include ./Utilities.src
+#include ./CommandInstruction.src
+
+// @param {Assert} assert
+test("Framework/CommandInstruction").expect("New returns as expected").is = function(assert)
+    assert.equals(CommandInstruction.New({}).command, null)
+    assert.is_false(CommandInstruction.New({}).hasIndex("command"))
+    assert.is_true(CommandInstruction.New({}).__isa.hasIndex("command"))
+    assert.equals(CommandInstruction.New({ "command": "foobar" }).command, "foobar")
+    assert.is_true(CommandInstruction.New({ "command": "foobar" }).hasIndex("command"))
+
+    assert.equals(CommandInstruction.New({}).args, [])
+    assert.is_false(CommandInstruction.New({}).hasIndex("args"))
+    assert.is_true(CommandInstruction.New({}).__isa.hasIndex("args"))
+    assert.equals(CommandInstruction.New({ "args": "foobar" }).args, "foobar")
+    assert.is_true(CommandInstruction.New({ "args": "foobar" }).hasIndex("args"))
+
+    assert.equals(CommandInstruction.New({}).chain_condition, null)
+    assert.is_false(CommandInstruction.New({}).hasIndex("chain_condition"))
+    assert.is_true(CommandInstruction.New({}).__isa.hasIndex("chain_condition"))
+    assert.equals(CommandInstruction.New({ "chain_condition": "foobar" }).chain_condition, "foobar")
+    assert.is_true(CommandInstruction.New({ "chain_condition": "foobar" }).hasIndex("chain_condition"))
+
+    assert.equals(CommandInstruction.New({}).pipe_output, false)
+    assert.is_false(CommandInstruction.New({}).hasIndex("pipe_output"))
+    assert.is_true(CommandInstruction.New({}).__isa.hasIndex("pipe_output"))
+    assert.equals(CommandInstruction.New({ "pipe_output": "foobar" }).pipe_output, "foobar")
+    assert.is_true(CommandInstruction.New({ "pipe_output": "foobar" }).hasIndex("pipe_output"))
+
+    assert.equals(CommandInstruction.New({}).stdin, "")
+    assert.is_false(CommandInstruction.New({}).hasIndex("stdin"))
+    assert.is_true(CommandInstruction.New({}).__isa.hasIndex("stdin"))
+    assert.equals(CommandInstruction.New({ "stdin": "foobar" }).stdin, "foobar")
+    assert.is_true(CommandInstruction.New({ "stdin": "foobar" }).hasIndex("stdin"))
+    
+    assert.is_false(CommandInstruction.New({}).hasIndex("anything_else"))
+    assert.is_false(CommandInstruction.New({}).__isa.hasIndex("anything_else"))
+    assert.is_false(CommandInstruction.New({ "anything_else": "foobar" }).hasIndex("anything_else"))
+
+    assert.is_true(CommandInstruction.New({}) isa CommandInstruction)
+    assert.is_true(CommandInstruction.New({
+        "command": "foobar",
+        "args": "foobar",
+        "chain_condition": "foobar",
+        "pipe_output": "foobar",
+        "stdin": "foobar",
+    }) isa CommandInstruction)
+end function
+
+test()

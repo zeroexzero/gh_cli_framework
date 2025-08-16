@@ -9,7 +9,7 @@ CommandRegistry.register = function(command)
     self.m_logger.add_debug("function ptr being used is: " + str(@command.func_ptr))
 
     // Prevent issues!
-    if alias == "" or @command.func_ptr == null then
+    if alias == "" or typeof(@command.func_ptr) != "function" or @command.func_ptr == null then
         self.m_logger.add_warning("Cannot register command without alias and func_ptr")
         return false
     end if
@@ -168,16 +168,25 @@ CommandRegistry.validate_param_val_map = function(command_param_value_map)
         if not param_def.optional and param_value == null then
             self.m_logger.add_warning(err_msg)
             return false
+        end if
 
         // If param_def.type is bool and param_value isn't true/false, return invalid
         self.m_logger.add_debug("Checking for and handling bool param non-bool value")
-        else if param_def.type == "bool" and not [true, false].hasIndex(param_value) then
+        if param_def.type == "bool" and not [true, false].hasIndex(param_value) then
             self.m_logger.add_warning(err_msg)
             return false
+        end if
 
         // If param_def.type is number and param_value isn't, return invalid
         self.m_logger.add_debug("Checking for and handling number param non-number value")
-        else if param_def.type == "number" and typeof(param_value) != "number" then
+        if param_def.type == "number" and typeof(param_value) != "number" then
+            self.m_logger.add_warning(err_msg)
+            return false
+        end if
+
+        // If param_def.type is string and param_value isn't, return invalid
+        self.m_logger.add_debug("Checking for and handling string param non-string value")
+        if param_def.type == "string" and typeof(param_value) != "string" then
             self.m_logger.add_warning(err_msg)
             return false
         end if
@@ -310,11 +319,15 @@ CommandRegistry.handle = function(input)
 
     return bundle_result
 end function
-CommandRegistry.New = function(app_state = {}, logger = Logger.New("quiet"))
+CommandRegistry.New = function(app_state = {}, logger = null)
     command_registry = new CommandRegistry
 
     command_registry.m_app_state = app_state
+    if not logger then
+        logger = Logger.New("quiet")
+    end if
     command_registry.m_logger = logger
+    command_registry.m_command_map = {}
 
     return command_registry
 end function

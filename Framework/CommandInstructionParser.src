@@ -1,6 +1,6 @@
 CommandInstructionParser = {}
 CommandInstructionParser.m_logger = null
-CommandInstructionParser.generate_instructions_from_input = function(input)
+CommandInstructionParser.generate_instructions_from_input = function(self, input)
     instructions = [CommandInstruction.New({})]
 
     cur_arg = ""

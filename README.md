@@ -56,7 +56,6 @@ The program "starts" at `./myprogram.src`.
 
 Commands are defined in `./Commands/` and are registered in `./myprogram.src`
 
-
 ### Utilities & Helper functions
 
 Included are some helper classes such as
@@ -70,3 +69,15 @@ Included are some helper classes such as
 This project structure requires you use Greybel unless you want to go insane.
 
 If you're unsure how to build with Greybel, consider reading their [docs](https://marketplace.visualstudio.com/items?itemName=ayecue.greybel-vs)
+
+### Testing
+
+This project utilizes the 0x0Test repository in a submodule.
+
+To run tests, first install all submodules with
+
+```bash
+git submodule update --init --recursive
+```
+
+Then you may run tests by running the `test.src` file at the root of the project or any `*.test.src` file elsewhere in the project.

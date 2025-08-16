@@ -1,0 +1,72 @@
+#import test from ../modules/0x0Test/src/test.src
+
+#include ./Constants.src
+#include ./Utilities.src
+#include ./Logger.src
+#include ./CommandInstruction.src
+#include ./CommandInstructionParser.src
+
+// @param {Assert} assert
+test("Framework/CommandInstructionParser").expect("New returns as expected").is = function(assert)
+    // Specify no logger, defaults to quiet
+    assert.is_true(CommandInstructionParser.New() isa CommandInstructionParser)
+    assert.equals(CommandInstructionParser.New().m_logger.m_level, "quiet")
+
+    // Specify error logger, uses that logger
+    error_logger = Logger.New("error")
+    assert.is_true(CommandInstructionParser.New(error_logger) isa CommandInstructionParser)
+    assert.equals(CommandInstructionParser.New(error_logger).m_logger.m_level, "error")
+end function
+
+// @param {Assert} assert
+test("Framework/CommandInstructionParser").expect("generate_instructions_from_input").is = function(assert)
+    parser = CommandInstructionParser.New()
+    parse = @parser.generate_instructions_from_input
+    assert.equals(1, len(parse(parser, "command_name param --flag -f ""quoted text ; && |""")))
+    assert.equals(4, len(parse(parser, "command_1  --flag -f ""quoted text ; & && > >> |"" | command_2  --flag -f ""quoted text ; & && > >> |"" ; command_3  --flag -f ""quoted text ; & && > >> |"" && command_4  --flag -f ""quoted text ; & && > >> |""")))
+end function
+
+// @param {Assert} assert
+test("Framework/CommandInstructionParser").expect("generates chained instructions").is = function(assert)
+    parser = CommandInstructionParser.New()
+    parse = @parser.generate_instructions_from_input
+    instructions = parse(parser, "command_1; command_2 && command_3 | command_4")
+
+    // ;
+    assert.equals("command_1", instructions[0].command)
+    assert.equals([], instructions[0].args)
+    assert.equals("always", instructions[0].chain_condition)
+    assert.equals(false, instructions[0].pipe_output)
+    assert.equals("", instructions[0].stdin)
+
+    // &&
+    assert.equals("command_2", instructions[1].command)
+    assert.equals([], instructions[1].args)
+    assert.equals("success", instructions[1].chain_condition)
+    assert.equals(false, instructions[1].pipe_output)
+    assert.equals("", instructions[1].stdin)
+
+    // |
+    assert.equals("command_3", instructions[2].command)
+    assert.equals([], instructions[2].args)
+    assert.equals("always", instructions[2].chain_condition)
+    assert.equals(true, instructions[2].pipe_output)
+    assert.equals("", instructions[2].stdin)
+
+    // n/a
+    assert.equals("command_4", instructions[3].command)
+    assert.equals([], instructions[3].args)
+    assert.equals("none", instructions[3].chain_condition)
+    assert.equals(false, instructions[3].pipe_output)
+    assert.equals("", instructions[3].stdin)
+end function
+
+// @param {Assert} assert
+test("Framework/CommandInstructionParser").expect("correctly parses command args").is = function(assert)
+    parser = CommandInstructionParser.New()
+    parse = @parser.generate_instructions_from_input
+
+    assert.equals(["--flag", "-f", "test ; && |"], parse(parser, "test --flag -f ""test ; && |""")[0].args)
+end function
+
+test()

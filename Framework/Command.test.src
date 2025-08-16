@@ -1,0 +1,65 @@
+#import test from ../modules/0x0Test/src/test.src
+
+#include ./Command.src
+
+// @param {Assert} assert
+test("Framework/Command").expect("New returns as expected").is = function(assert)
+    assert.equals(Command.New({}).alias, "")
+    assert.is_false(Command.New({}).hasIndex("alias"))
+    assert.is_true(Command.New({}).__isa.hasIndex("alias"))
+    assert.equals(Command.New({ "alias": "foobar" }).alias, "foobar")
+    assert.is_true(Command.New({ "alias": "foobar" }).hasIndex("alias"))
+    
+    assert.is_true(Command.New({}).func_ptr == null)
+    assert.is_false(Command.New({}).hasIndex("func_ptr"))
+    assert.is_true(Command.New({}).__isa.hasIndex("func_ptr"))
+    assert.equals(Command.New({ "func_ptr": "foobar" }).func_ptr, "foobar")
+    assert.is_true(Command.New({ "func_ptr": "foobar" }).hasIndex("func_ptr"))
+    
+    assert.is_true(Command.New({}).params == {})
+    assert.is_false(Command.New({}).hasIndex("params"))
+    assert.is_true(Command.New({}).__isa.hasIndex("params"))
+    assert.equals(Command.New({ "params": "foobar" }).params, "foobar")
+    assert.is_true(Command.New({ "params": "foobar" }).hasIndex("params"))
+    
+    assert.equals(Command.New({}).description, "")
+    assert.is_false(Command.New({}).hasIndex("description"))
+    assert.is_true(Command.New({}).__isa.hasIndex("description"))
+    assert.equals(Command.New({ "description": "foobar" }).description, "foobar")
+    assert.is_true(Command.New({ "description": "foobar" }).hasIndex("description"))
+    
+    assert.equals(Command.New({}).example, "")
+    assert.is_false(Command.New({}).hasIndex("example"))
+    assert.is_true(Command.New({}).__isa.hasIndex("example"))
+    assert.equals(Command.New({ "example": "foobar" }).example, "foobar")
+    assert.is_true(Command.New({ "example": "foobar" }).hasIndex("example"))
+    
+    assert.is_true(Command.New({}).inject == [ "logger" ])
+    assert.is_false(Command.New({}).hasIndex("inject"))
+    assert.is_true(Command.New({}).__isa.hasIndex("inject"))
+    assert.equals(Command.New({ "inject": "foobar" }).inject, "foobar")
+    assert.is_true(Command.New({ "inject": "foobar" }).hasIndex("inject"))
+    
+    assert.is_true(Command.New({}).access_code == null)
+    assert.is_false(Command.New({}).hasIndex("access_code"))
+    assert.is_true(Command.New({}).__isa.hasIndex("access_code"))
+    assert.equals(Command.New({ "access_code": "foobar" }).access_code, "foobar")
+    assert.is_true(Command.New({ "access_code": "foobar" }).hasIndex("access_code"))
+    
+    assert.is_false(Command.New({}).hasIndex("anything_else"))
+    assert.is_false(Command.New({}).__isa.hasIndex("anything_else"))
+    assert.is_false(Command.New({ "anything_else": "foobar" }).hasIndex("anything_else"))
+
+    assert.is_true(Command.New({}) isa Command)
+    assert.is_true(Command.New({
+        "alias": "foobar",
+        "func_ptr": "foobar",
+        "params": "foobar",
+        "description": "foobar",
+        "example": "foobar",
+        "inject": "foobar",
+        "access_code": "foobar",
+    }) isa Command)
+end function
+
+test()

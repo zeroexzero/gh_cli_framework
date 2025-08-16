@@ -1,0 +1,59 @@
+#import test from ../modules/0x0Test/src/test.src
+
+#include ./Utilities.src
+#include ./CommandParam.src
+
+// @param {Assert} assert
+test("Framework/CommandParam").expect("New returns as expected").is = function(assert)
+    assert.equals(CommandParam.New({}).description, "None provided")
+    assert.is_false(CommandParam.New({}).hasIndex("description"))
+    assert.is_true(CommandParam.New({}).__isa.hasIndex("description"))
+    assert.equals(CommandParam.New({ "description": "foobar" }).description, "foobar")
+    assert.is_true(CommandParam.New({ "description": "foobar" }).hasIndex("description"))
+
+    assert.equals(CommandParam.New({}).flags, [])
+    assert.is_false(CommandParam.New({}).hasIndex("flags"))
+    assert.is_true(CommandParam.New({}).__isa.hasIndex("flags"))
+    assert.equals(CommandParam.New({ "flags": "foobar" }).flags, "foobar")
+    assert.is_true(CommandParam.New({ "flags": "foobar" }).hasIndex("flags"))
+
+    assert.equals(CommandParam.New({}).type, "null")
+    assert.is_false(CommandParam.New({}).hasIndex("type"))
+    assert.is_true(CommandParam.New({}).__isa.hasIndex("type"))
+    assert.equals(CommandParam.New({ "type": "foobar" }).type, "foobar")
+    assert.is_true(CommandParam.New({ "type": "foobar" }).hasIndex("type"))
+
+    assert.equals(CommandParam.New({}).optional, false)
+    assert.is_false(CommandParam.New({}).hasIndex("optional"))
+    assert.is_true(CommandParam.New({}).__isa.hasIndex("optional"))
+    assert.equals(CommandParam.New({ "optional": "foobar" }).optional, "foobar")
+    assert.is_true(CommandParam.New({ "optional": "foobar" }).hasIndex("optional"))
+
+    assert.equals(CommandParam.New({}).default, null)
+    assert.is_false(CommandParam.New({}).hasIndex("default"))
+    assert.is_true(CommandParam.New({}).__isa.hasIndex("default"))
+    assert.equals(CommandParam.New({ "default": "foobar" }).default, "foobar")
+    assert.is_true(CommandParam.New({ "default": "foobar" }).hasIndex("default"))
+
+    assert.equals(CommandParam.New({}).position, null)
+    assert.is_false(CommandParam.New({}).hasIndex("position"))
+    assert.is_true(CommandParam.New({}).__isa.hasIndex("position"))
+    assert.equals(CommandParam.New({ "position": "foobar" }).position, "foobar")
+    assert.is_true(CommandParam.New({ "position": "foobar" }).hasIndex("position"))
+    
+    assert.is_false(CommandParam.New({}).hasIndex("anything_else"))
+    assert.is_false(CommandParam.New({}).__isa.hasIndex("anything_else"))
+    assert.is_false(CommandParam.New({ "anything_else": "foobar" }).hasIndex("anything_else"))
+
+    assert.is_true(CommandParam.New({}) isa CommandParam)
+    assert.is_true(CommandParam.New({
+        "description": "foobar",
+        "flags": "foobar",
+        "type": "foobar",
+        "optional": "foobar",
+        "default": "foobar",
+        "position": "foobar",
+    }) isa CommandParam)
+end function
+
+test()
